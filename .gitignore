@@ -136,7 +136,8 @@ dmypy.json
 #Python Cache
 #Data
 *.csv
-!Data/category-id.csv
-!Data/videos-small.csv
+!Data/sentiment_values.csv
+!Data/context_content_features-small.csv
+!Data/user_track_hashtag_timestamp-small.csv
 
 .vim
