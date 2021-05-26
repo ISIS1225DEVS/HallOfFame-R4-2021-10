@@ -19,13 +19,20 @@
  * You should have received a copy of the GNU General Public License
  * along withthis program.  If not, see <http://www.gnu.org/licenses/>.
  """
-
+import tracemalloc
+import time
 import config as cf
 import sys
+import datetime
 import controller
 from DISClib.ADT import list as lt
+from DISClib.ADT import orderedmap as om
+from DISClib.ADT import map as mp
 assert cf
-import time 
+import model
+from DISClib.DataStructures import mapentry as me
+from DISClib.DataStructures import listiterator as it
+
 
 """
 La vista se encarga de la interacción con el usuario
@@ -37,48 +44,13 @@ operación solicitada
 def printMenu():
     print("Bienvenido")
     print("1- Cargar información en el catálogo")
-    print("2- Encontrar buenos videos")
-    print("3- Encontrar tendencia por pais")
-    print("4- Encontrar tendencia por categoria")
-    print("5- Buscar los videos con mas likes")
-
-def print_resultsReq1(ord_vids, sample):
-    size = lt.size(ord_vids)
-    if size > sample:
-        print("Los primeros ", sample, " videos en views son: ")
-        i = 1
-        while i <= sample:
-            video= lt.getElement(ord_vids,i)
-            print("Titulo: " + video['title'] + " Fecha tendencia: " +  video["trending_date"]  + " Canal: " + video["channel_title"]+ " Momento de publicacion: " + video["publish_time"] + " Views: "+ str(video["views"]) + " Likes: " + str(video["likes"])+ " Dislikes: " + str(video["dislikes"]) + '.')
-            i += 1
-
-def print_resultsReq2(tupla):
-    dias = tupla[0]
-    video_tendencia = tupla[1]
-    print("Titulo: " + video_tendencia['title'] + " Nombre del canal: " +  video_tendencia['channel_title']  + ' País: ' + video_tendencia['country'] + ' Días: ' + str(dias) + '.')
-
-def print_resultsReq3(tupla):
-    dias = tupla[0]
-    video = tupla[1]
-    print("Titulo: " + video['title'] + " Nombre del canal: " +  video['channel_title'] + " Categoria: " + str(video['category_id'])+ " Dias: " + str(dias) + '.')
-
-def print_resultsReq4(ord_vids, sample):
-    size = lt.size(ord_vids)
-    if size > sample:
-        print("Los " + str(sample) + " videos con más likes son : ")
-        i = 1
-        while i <= sample:
-            video= lt.getElement(ord_vids,i)
-            print("Titulo: " + video['title'] + " Nombre del canal: " + video["channel_title"] + " Momento de publicacion: " + video["publish_time"] + " Views: "+ str(video["views"]) + " Likes: " + str(video["likes"])+ " Dislikes: " + str(video["dislikes"]) + ' Tags: ' + video['tags'] + '. ')
-            i += 1
-    else:
-        print("La cantidad que desea ver excede la cantidad de videos que desea ver")
-
-def initCatolog():
-    return controller.initCatalog()
-
-def loadData(catalog):
-    controller.loadData(catalog)
+    print("2- Cargar información de eventos")
+    print("3- Consultar número de eventos en un rango para una característica de contenido")
+    print("4- Consultar canciones de fiesta")
+    print("5 - Consultar canciones para estudiar")
+    print("6 - Consultar número de canciones para un género")
+    print("7 - Indicar el género musical más escuchado en el tiempo")
+    print("0- Salir")
 
 catalog = None
 
@@ -87,68 +59,118 @@ Menu principal
 """
 while True:
     printMenu()
-    inputs = input('Seleccione una opción para continuar\n')
+    inputs = input('Seleccione una opción para continuar\n>')
+
     if int(inputs[0]) == 1:
-        print("Cargando información de los archivos .... ")
-        t1 = time.process_time_ns()
-        catalog = initCatolog()
-        loadData(catalog)
-        t2 = time.process_time_ns()
-        print("El tiempo transcurrido fue: "+ str(t2-t1))
-        print('Videos cargados: ' + str(lt.size(catalog['videos'])))
-        print('Categorías cargadas: ' + str(lt.size(catalog['categories'])))
+        print("")
+        print("\nInicializando....")
+        # cont es el controlador que se usará de acá en adelante
+        cont = controller.init()
 
-    elif int(inputs[0]) == 2: # Print Requerimiento 1
-        pais = input("Ingrese el pais para el cual desea realizar la búsqueda: ")
-        pais= pais.lower()
-        categoria = input("Ingrese la categoria que desea conocer: ")
-        categoria = categoria.lower()
-        categoria = " " + categoria
-        tamano = int(input("Ingrese la cantidad de videos que desea ver: "))
-        filtrado_pais = controller.filtrado_pais(catalog, pais)
-        num_categoria = controller.idCat(catalog, categoria)
-        filtrado_categoria = controller.filtrado_categoria(filtrado_pais, num_categoria)
-        result = controller.sortVideos(filtrado_categoria)
-        print_resultsReq1(result[1], tamano)
-        controller.limpieza(filtrado_categoria)
-        controller.limpieza(filtrado_pais)
-        controller.limpieza(result)
+    elif int(inputs[0]) == 2:
 
-    elif int(inputs[0]) == 3: # Print Requerimiento 2
-        pais = input('Ingrese el pais para el cual desea realizar la búsqueda: ')
-        pais = pais.lower()
-        filtrado_pais = controller.filtrado_pais(catalog, pais)
-        result = controller.sortVideosReq2(filtrado_pais)
-        video_tendencia = controller.trending_2(result[1])
-        print_resultsReq2(video_tendencia)
-        controller.limpieza(video_tendencia)
+        x=controller.loadData(cont)
+        catalog=x[0]
+        eventos=catalog['eventos']
+        tracks=catalog['hashtagsportrack']
 
-    elif int(inputs[0]) == 4: # Print Requerimiento 3
-        categoria= input("Ingrese la categoria para la cual desea ver el video con mas dias como tendencia: ")
-        categoria=categoria.lower()
-        categoria= " "+categoria
-        lista= controller.lista(catalog)
-        cat_num = controller.idCat(catalog, categoria)
-        filtro_cat = controller.filtrado_categoria(lista, cat_num)
-        orden_fecha = controller.sortDate(filtro_cat)
-        orden_id = controller.sortVideosReq3(orden_fecha[1])
-        video_mayor = controller.trending(orden_id[1])
-        print_resultsReq3(video_mayor)
-        controller.limpieza(lista)
-        controller.limpieza(filtro_cat)
+        print('\nSe cargaron '+str(lt.size(eventos))+' eventos de escucha.')
+        print('Se cargaron '+str(mp.size(tracks))+' pistas de audio únicas.')
+        print('Se cargaron '+str(x[1])+' artistas únicos.\n')
+        print('Información de los 5 primeros eventos\n')
 
-    elif int(inputs[0]) == 5: # Print Requerimiento 4
-        pais = input("Ingrese el pais para el cual desea realizar la búsqueda: ")
-        pais = pais.lower()
-        tag = input("Ingrese el tag que desea que buscar (si es una palabra, importan las mayúsculas): " )
-        sample = int(input("Ingrese la cantidad de video que desea ver: "))
-        filtrado_pais = controller.filtrado_pais(catalog, pais)
-        filtrado_tags_y_pais = controller.filtrado_tags(filtrado_pais, tag)
-        videos_likes = controller.sortVideosReq4(filtrado_tags_y_pais)
-        print_resultsReq4(videos_likes[1], sample)
-        controller.limpieza(filtrado_tags_y_pais)
-        controller.limpieza(filtrado_pais)
-        controller.limpieza(videos_likes)
+        n=1
+        while n<=5:
+            evento=lt.getElement(eventos,n)
+            print('('+str(n)+') || track id: '+evento['track_id']+'|| artist id: '+evento['artist_id']+' || user id: '+evento['user_id']+' || instrumentalness: '+evento['instrumentalness']+' || liveness: '+evento['liveness']+' || speechiness: '+evento['speechiness']+' || danceability: '+evento['danceability']+' || valence: '+evento['valence']+' || loudness '+evento['loudness']+' || tempo: '+evento['tempo']+' || acousticness: '+evento['acousticness']+' || energy: '+evento['energy']+'\n')
+            n+=1
+        print('Información de los 5 últimos eventos\n')
+
+        m=(lt.size(eventos)-4)
+        while m<=lt.size(eventos):
+            evento=lt.getElement(eventos,m)
+            print('('+str(n)+') || track id: '+evento['track_id']+'|| artist id: '+evento['artist_id']+' || user id: '+evento['user_id']+' || instrumentalness: '+evento['instrumentalness']+' || liveness: '+evento['liveness']+' || speechiness: '+evento['speechiness']+' || danceability: '+evento['danceability']+' || valence: '+evento['valence']+' || loudness '+evento['loudness']+' || tempo: '+evento['tempo']+' || acousticness: '+evento['acousticness']+' || energy: '+evento['energy']+'\n')
+            m+=1
+            n+=1
+        
+        
+
+        input('Presione enter para continuar')
+        
+    elif int(inputs[0])==3:
+        minimo=float(input('Ingrese el valor mínimo del rango: '))
+        maximo=float(input('Ingrese el valor máximo del rango: '))
+        feature=input('Ingrese la característica de contenido: ')
+        x=controller.req1(minimo,maximo,feature.lower(),catalog)
+        print("Tiempo [ms]: "+f"{x[0]:.3f}"+" ||  "+"Memoria [kB]: "+f"{x[1]:.3f}"+'\n')
+        input('Presione enter para continuar')
+       
+
+    elif int(inputs[0])==4:
+        minenergy=float(input('Valor inferior energy: '))
+        maxenergy=float(input('Valor superior energy: '))
+        mindance=float(input('Valor inferior danceability: '))
+        maxdance=float(input('Valor superior danceability: '))
+        x=controller.req2(catalog,minenergy,maxenergy,mindance,maxdance)
+        print("\nTiempo [ms]: "+f"{x[0]:.3f}"+" ||  "+"Memoria [kB]: "+f"{x[1]:.3f}"+'\n')
+        input('Presione enter para continuar')
+
+    elif int(inputs[0])==5:
+        mininstrum=float(input('Valor inferior instrumentalness: '))
+        maxinstrum=float(input('Valor superior instrumentalness: '))
+        mintempo=float(input('Valor inferior tempo: '))
+        maxtempo=float(input('Valor superior tempo: '))
+        x=controller.req3(catalog,mininstrum,maxinstrum,mintempo,maxtempo)
+        print("\nTiempo [ms]: "+f"{x[0]:.3f}"+" ||  "+"Memoria [kB]: "+f"{x[1]:.3f}"+'\n')
+        input('Presione enter para continuar')
+    
+    elif int(inputs[0])==6:
+        delta_time = -1.0
+        delta_memory = -1.0
+
+        tracemalloc.start()
+        start_time = controller.getTime()
+        start_memory = controller.getMemory()
+
+        x=int(input('¿Desea conocer información sobre géneros ya existentes? [0: sí // 1: no]: '))
+        if x==0:
+            genres=input('¿Cuáles? [escríbalos separados por una coma y espacio. Ej: reggae, hip-hop]: ')
+            lista=(genres.lower()).split(', ')
+            for genre in lista:
+                controller.req4(catalog,genre,None,None)
+            print('\n')
+        y=int(input('¿Desea conocer información sobre un género no existente? [0: sí // 1: no]: '))
+        if y==0:
+            name=input('Ingrese el nombre del nuevo género: ')
+            minim=float(input('Ingrese el valor mínimo de tempo: '))
+            maxim=float(input('Ingrese el valor máximo de tempo: '))
+            controller.req4(catalog,name,minim,maxim)
+            print('\n')
+
+        stop_memory = controller.getMemory()
+        stop_time = controller.getTime()
+        tracemalloc.stop()
+
+        delta_time = stop_time - start_time
+        delta_memory = controller.deltaMemory(start_memory, stop_memory)
+        print("Tiempo [ms]: "+f"{delta_time:.3f}"+" ||  "+"Memoria [kB]: "+f"{delta_memory:.3f}"+'\n')
+        input('Presione enter para continuar')
+
+    elif int(inputs[0])==7:
+        x=input('Ingrese la hora mínima del rango [en formato H:MM:SS Ej: 0:00:00]: ')
+        info=datetime.datetime.strptime(x,'%H:%M:%S')
+        time1=info.time()
+        y=input('Ingrese la hora máxima del rango [en formato H:MM:SS Ej: 0:00:00]: ')
+        info1=datetime.datetime.strptime(y,'%H:%M:%S')
+        time2=info1.time()
+        x = controller.req5(catalog,time1,time2)
+
+        print("\nTiempo [ms]: "+f"{x[0]:.3f}"+" ||  "+"Memoria [kB]: "+f"{x[1]:.3f}"+'\n')
+
+        input('Presione enter para continuar')
+
+
+
     else:
         sys.exit(0)
 sys.exit(0)
